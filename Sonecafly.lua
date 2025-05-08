@@ -34,7 +34,8 @@ ToggleButtonStop.TextSize = 18
 
 -- Fly Control
 local flying = false
-local speed = 50
+local speed = 100 -- Ajuste a velocidade conforme necessário
+local jumpPower = 500 -- Ajuste a potência de subida
 local bodyGyro, bodyVelocity
 
 -- Função para ativar o voo
@@ -55,7 +56,7 @@ local function activateFly()
     bodyGyro.Parent = hrp
 
     bodyVelocity.MaxForce = Vector3.new(400000, 400000, 400000)
-    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    bodyVelocity.Velocity = Vector3.new(0, jumpPower, 0) -- Velocidade inicial para subir
     bodyVelocity.Parent = hrp
 
     -- Movimento do voo
@@ -63,7 +64,10 @@ local function activateFly()
         if gameProcessed then return end
         if input.UserInputType == Enum.UserInputType.Keyboard then
             if input.KeyCode == Enum.KeyCode.Space then
-                bodyVelocity.Velocity = Vector3.new(0, speed, 0)
+                bodyVelocity.Velocity = Vector3.new(0, jumpPower, 0) -- Continuar subindo ao apertar espaço
+            end
+            if input.KeyCode == Enum.KeyCode.S then
+                bodyVelocity.Velocity = Vector3.new(0, -jumpPower, 0) -- Descer quando pressionar 'S'
             end
         end
     end)
