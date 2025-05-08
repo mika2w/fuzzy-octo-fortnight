@@ -1,119 +1,99 @@
--- Serviços e referências
+-- Declarações
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 
--- Interface para ativar/desativar ESP
+-- Interface para ativar/desativar o voo
 local ScreenGui = Instance.new("ScreenGui")
-local ToggleButton = Instance.new("TextButton")
+local ToggleButtonFly = Instance.new("TextButton")
+local ToggleButtonStop = Instance.new("TextButton")
 
-ScreenGui.Name = "ESP_GUI"
+ScreenGui.Name = "Fly_GUI"
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
-ToggleButton.Name = "ToggleESP"
-ToggleButton.Parent = ScreenGui
-ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-ToggleButton.Position = UDim2.new(0, 20, 0, 100)
-ToggleButton.Size = UDim2.new(0, 100, 0, 40)
-ToggleButton.Font = Enum.Font.SourceSansBold
-ToggleButton.Text = "ESP: OFF"
-ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleButton.TextSize = 18
+ToggleButtonFly.Name = "ToggleFly"
+ToggleButtonFly.Parent = ScreenGui
+ToggleButtonFly.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+ToggleButtonFly.Position = UDim2.new(0, 20, 0, 100)
+ToggleButtonFly.Size = UDim2.new(0, 150, 0, 40)
+ToggleButtonFly.Font = Enum.Font.SourceSansBold
+ToggleButtonFly.Text = "Ativar Voo"
+ToggleButtonFly.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButtonFly.TextSize = 18
 
--- Controle do ESP
-local espEnabled = false
-local espObjects = {}
+ToggleButtonStop.Name = "StopFly"
+ToggleButtonStop.Parent = ScreenGui
+ToggleButtonStop.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+ToggleButtonStop.Position = UDim2.new(0, 20, 0, 150)
+ToggleButtonStop.Size = UDim2.new(0, 150, 0, 40)
+ToggleButtonStop.Font = Enum.Font.SourceSansBold
+ToggleButtonStop.Text = "Parar Voo"
+ToggleButtonStop.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButtonStop.TextSize = 18
 
--- Função para criar ESP em jogadores
-function createESP(player)
-    if player == LocalPlayer then return end
+-- Fly Control
+local flying = false
+local speed = 50
+local bodyGyro, bodyVelocity
 
-    local nameTag = Drawing.new("Text")
-    nameTag.Size = 16
-    nameTag.Center = true
-    nameTag.Outline = true
-    nameTag.Visible = false
+-- Função para ativar o voo
+local function activateFly()
+    if flying then return end
 
-    local line = Drawing.new("Line")
-    line.Thickness = 1
-    line.Color = Color3.fromRGB(255, 0, 0)
-    line.Visible = false
+    flying = true
+    local character = LocalPlayer.Character
+    local humanoid = character:WaitForChild("Humanoid")
+    local hrp = character:WaitForChild("HumanoidRootPart")
 
-    local function update()
-        if not espEnabled or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
-            nameTag.Visible = false
-            line.Visible = false
-            return
-        end
+    -- Cria os objetos necessários para voar
+    bodyGyro = Instance.new("BodyGyro")
+    bodyVelocity = Instance.new("BodyVelocity")
 
-        local hrp = player.Character.HumanoidRootPart
-        local screenPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+    bodyGyro.MaxTorque = Vector3.new(400000, 400000, 400000)
+    bodyGyro.CFrame = hrp.CFrame
+    bodyGyro.Parent = hrp
 
-        -- Verificação de team (Team Check)
-        if player.Team == LocalPlayer.Team then
-            nameTag.Visible = false
-            line.Visible = false
-            return
-        end
+    bodyVelocity.MaxForce = Vector3.new(400000, 400000, 400000)
+    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    bodyVelocity.Parent = hrp
 
-        if onScreen then
-            local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
-            nameTag.Text = string.format("%s [%.0fm]", player.Name, distance)
-            nameTag.Position = Vector2.new(screenPos.X, screenPos.Y - 20)
-            nameTag.Color = Color3.fromRGB(255, 0, 0)
-            nameTag.Visible = true
-
-            line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-            line.To = Vector2.new(screenPos.X, screenPos.Y)
-            line.Color = Color3.fromRGB(255, 0, 0)
-            line.Visible = true
-        else
-            nameTag.Visible = false
-            line.Visible = false
-        end
-    end
-
-    -- Atualização contínua
-    local connection = RunService.RenderStepped:Connect(update)
-
-    -- Limpeza
-    player.AncestryChanged:Connect(function(_, parent)
-        if not parent then
-            nameTag:Remove()
-            line:Remove()
-            if connection then connection:Disconnect() end
+    -- Movimento do voo
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            if input.KeyCode == Enum.KeyCode.Space then
+                bodyVelocity.Velocity = Vector3.new(0, speed, 0)
+            end
         end
     end)
-
-    espObjects[player] = { nameTag = nameTag, line = line, connection = connection }
 end
 
--- Limpa todos os ESPs
-function clearESP()
-    for _, v in pairs(espObjects) do
-        if v.nameTag then v.nameTag:Remove() end
-        if v.line then v.line:Remove() end
-        if v.connection then v.connection:Disconnect() end
+-- Função para desativar o voo
+local function deactivateFly()
+    if not flying then return end
+
+    flying = false
+    local character = LocalPlayer.Character
+    local hrp = character:WaitForChild("HumanoidRootPart")
+
+    -- Remove os objetos para parar o voo
+    if bodyGyro then
+        bodyGyro:Destroy()
     end
-    espObjects = {}
+    if bodyVelocity then
+        bodyVelocity:Destroy()
+    end
 end
 
--- Botão liga/desliga
-ToggleButton.MouseButton1Click:Connect(function()
-    espEnabled = not espEnabled
-    ToggleButton.Text = espEnabled and "ESP: ON" or "ESP: OFF"
+-- Botão para ativar voo
+ToggleButtonFly.MouseButton1Click:Connect(function()
+    activateFly()
+    ToggleButtonFly.Text = "Voo Ativado"
+end)
 
-    if espEnabled then
-        for _, player in pairs(Players:GetPlayers()) do
-            createESP(player)
-        end
-
-        Players.PlayerAdded:Connect(function(player)
-            task.wait(1)
-            createESP(player)
-        end)
-    else
-        clearESP()
-    end
+-- Botão para parar voo
+ToggleButtonStop.MouseButton1Click:Connect(function()
+    deactivateFly()
+    ToggleButtonFly.Text = "Ativar Voo"
 end)
